@@ -1,0 +1,65 @@
+<script>
+  const map = L.map('map').setView([41.0082, 28.9784], 11);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  let busLayer = L.layerGroup().addTo(map);
+
+  // Basit otobüs ikonu
+  const busIcon = L.icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/61/61212.png',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  });
+
+  // BUTON (ikon tıklanınca tüm otobüsler gelsin)
+  const loadButton = L.control({ position: 'topright' });
+  loadButton.onAdd = function () {
+    const div = L.DomUtil.create('div');
+    div.innerHTML = `
+      <button style="
+        padding:8px 12px;
+        font-size:14px;
+        cursor:pointer;
+        border:none;
+        border-radius:6px;
+      ">
+        🚌 Otobüsleri Yükle
+      </button>`;
+    div.onclick = loadBuses;
+    return div;
+  };
+  loadButton.addTo(map);
+
+  async function loadBuses() {
+    busLayer.clearLayers();
+
+    try {
+      // CORS için açık proxy (bilgilendirme amaçlı)
+      const url = "https://cors.isomorphic-git.org/https://iett.istanbul/iettProxy/LiveBus/GetAllBusLocations";
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!data || !data.Data) {
+        alert("Veri alınamadı");
+        return;
+      }
+
+      data.Data.forEach(bus => {
+        if (bus.Latitude && bus.Longitude) {
+          L.marker([bus.Latitude, bus.Longitude], { icon: busIcon })
+            .addTo(busLayer)
+            .bindPopup(`
+              <b>Hat:</b> ${bus.LineCode || "-"}<br>
+              <b>Araç:</b> ${bus.Garage || "-"}
+            `);
+        }
+      });
+
+    } catch (e) {
+      alert("Bağlantı hatası (geçici olabilir)");
+    }
+  }
+</script>
